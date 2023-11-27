@@ -6,7 +6,7 @@
 }
 
 %{
-// Bison 用来描述 EBNF 本身, 其依赖于 Flex 中的终结符描述. 它会生成一个 LALR parser.
+
 #include <iostream>
 #include <memory>
 #include <string>
@@ -34,11 +34,11 @@ void yyerror(std::unique_ptr<BaseAST> &ast, const char *s);
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
 %token INT RETURN
-%token <str_val> IDENT
+%token <str_val> IDENT LOR LAND EQ NEQ GEQ LEQ
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Number
+%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp
 
 %%
 
@@ -77,11 +77,154 @@ Block
     ;
 
 Stmt
-    : RETURN Number ';' {
-        auto number = std::unique_ptr<BaseAST>($2);
-        $$ = new StmtAST(number);
+    : RETURN Exp ';' {
+        auto exp = std::unique_ptr<BaseAST>($2);
+        $$ = new StmtAST(exp);
     }
     ;
+
+Exp
+    : LOrExp{
+        auto lorexp = std::unique_ptr<BaseAST>($1);
+        $$ = new ExpAST(lorexp);
+    }
+    ;
+
+PrimaryExp
+    : '(' Exp ')'{
+        auto exp = std::unique_ptr<BaseAST>($2);
+        $$ = new PrimaryExpAST(exp);
+    }
+    | Number{
+        auto number = std::unique_ptr<BaseAST>($1);
+        $$ = new PrimaryExpAST(number);
+    }
+    ;
+
+UnaryExp
+    : PrimaryExp{
+        auto primaryexp = std::unique_ptr<BaseAST>($1);
+        $$ = new PrimaryExpAST(primaryexp);
+    }
+    | '+' UnaryExp{
+        auto unaryexp = std::unique_ptr<BaseAST>($2);
+        $$ = new UnaryExpAST(unaryexp,UnaryOp::Positive);
+    }
+    | '-' UnaryExp{
+        auto unaryexp = std::unique_ptr<BaseAST>($2);
+        $$ = new UnaryExpAST(unaryexp,UnaryOp::Negative);
+    }
+    | '!' UnaryExp{
+        auto unaryexp = std::unique_ptr<BaseAST>($2);
+        $$ = new UnaryExpAST(unaryexp,UnaryOp::LogicalFalse);
+    }
+    ;
+
+MulExp
+    : UnaryExp{
+        auto unaryexp = std::unique_ptr<BaseAST>($1);
+        $$ = new MulExpAST(unaryexp);
+    }
+    | MulExp '*' UnaryExp{
+        auto mulexp = std::unique_ptr<BaseAST>($1);
+        auto unaryexp = std::unique_ptr<BaseAST>($3);
+        $$ = new MulExpAST(unaryexp,mulexp,MulType::Mul);
+    }
+    | MulExp '/' UnaryExp{
+        auto mulexp = std::unique_ptr<BaseAST>($1);
+        auto unaryexp = std::unique_ptr<BaseAST>($3);
+        $$ = new MulExpAST(unaryexp,mulexp,MulType::Div);
+    }
+    | MulExp '%' UnaryExp{
+         auto mulexp = std::unique_ptr<BaseAST>($1);
+         auto unaryexp = std::unique_ptr<BaseAST>($3);
+         $$ = new MulExpAST(unaryexp,mulexp,MulType::Mod);
+    }
+    ;
+
+AddExp
+    : MulExp{
+        auto mulexp = std::unique_ptr<BaseAST>($1);
+        $$ = new AddExpAST(mulexp);
+    }
+    | AddExp '+' MulExp{
+        auto addexp = std::unique_ptr<BaseAST>($1);
+        auto mulexp = std::unique_ptr<BaseAST>($3);
+        $$ = new AddExpAST(mulexp,addexp,AddType::Add);
+    }
+    | AddExp '-' MulExp{
+         auto addexp = std::unique_ptr<BaseAST>($1);
+         auto mulexp = std::unique_ptr<BaseAST>($3);
+         $$ = new AddExpAST(mulexp,addexp,AddType::Sub);
+     }
+    ;
+
+RelExp
+    :AddExp{
+        auto addexp =std::unique_ptr<BaseAST>($1);
+        $$ = new RelExpAST(addexp);
+    }
+    | RelExp '<' AddExp{
+        auto relexp = std::unique_ptr<BaseAST>($1);
+        auto addexp = std::unique_ptr<BaseAST>($3);
+        $$ = new RelExpAST(addexp,relexp,RelType::Less);
+    }
+    | RelExp '>' AddExp{
+        auto relexp = std::unique_ptr<BaseAST>($1);
+        auto addexp = std::unique_ptr<BaseAST>($3);
+        $$ = new RelExpAST(addexp,relexp,RelType::Bigger);
+    }
+    | RelExp LEQ AddExp{
+        auto relexp = std::unique_ptr<BaseAST>($1);
+        auto addexp = std::unique_ptr<BaseAST>($3);
+        $$ = new RelExpAST(addexp,relexp,RelType::LessEq);
+    }
+    |RelExp GEQ AddExp{
+        auto relexp = std::unique_ptr<BaseAST>($1);
+        auto addexp = std::unique_ptr<BaseAST>($3);
+        $$ = new RelExpAST(addexp,relexp,RelType::BiggerEq);
+    }
+    ;
+
+EqExp
+    : RelExp{
+        auto relexp = std::unique_ptr<BaseAST>($1);
+        $$ = new EqExpAST(relexp);
+    }
+    | EqExp EQ RelExp{
+        auto eqexp = std::unique_ptr<BaseAST>($1);
+        auto relexp = std::unique_ptr<BaseAST>($3);
+        $$ = new EqExpAST(eqexp,relexp,EqType::Equal);
+    }
+    | EqExp NEQ RelExp{
+        auto eqexp = std::unique_ptr<BaseAST>($1);
+        auto relexp = std::unique_ptr<BaseAST>($3);
+        $$ = new EqExpAST(eqexp,relexp,EqType::NotEqual);
+    }
+    ;
+
+LAndExp
+    : EqExp{
+        auto eqexp = std::unique_ptr<BaseAST>($1);
+        $$ = new LAndExpAST(eqexp);
+    }
+    | LAndExp LAND EqExp{
+        auto landexp = std::unique_ptr<BaseAST>($1);
+        auto eqexp = std::unique_ptr<BaseAST>($3);
+        $$ = new LAndExpAST(landexp,eqexp);
+    }
+    ;
+
+LOrExp
+    : LAndExp{
+        auto landexp =std::unique_ptr<BaseAST>($1);
+        $$ = new LOrExpAST(landexp);
+    }
+    | LOrExp LOR LAndExp{
+        auto lorexp = std::unique_ptr<BaseAST>($1);
+        auto landexp = std::unique_ptr<BaseAST>($3);
+        $$ = new LOrExpAST(lorexp,landexp);
+    }
 
 Number
     : INT_CONST {
@@ -94,7 +237,7 @@ Number
 // 定义错误处理函数, 其中第二个参数是错误信息
 // parser 如果发生错误 (例如输入的程序出现了语法错误), 就会调用这个函数
 void yyerror(std::unique_ptr<BaseAST> &ast, const char *s) {
-      /* extern int yylineno;    // defined and maintained in lex
+      extern int yylineno;    // defined and maintained in lex
         extern char *yytext;    // defined and maintained in lex
         int len=strlen(yytext);
         int i;
@@ -103,6 +246,5 @@ void yyerror(std::unique_ptr<BaseAST> &ast, const char *s) {
         {
             sprintf(buf,"%s%d ",buf,yytext[i]);
         }
-        fprintf(stderr, "ERROR: %s at symbol '%s' on line %d\n", s, buf, yylineno); */
-        std::cerr << "error: " << s << std::endl;
+        fprintf(stderr, "ERROR: %s at symbol '%s' on line %d\n", s, buf, yylineno);
 }
