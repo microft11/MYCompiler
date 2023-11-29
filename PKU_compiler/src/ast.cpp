@@ -10,6 +10,7 @@ std::string generate_binary_operation(int leftnum,int rightnum,string oper){
     NAME_NUMBER++;
     return tmp.str();
 }
+
 std::string CompUnitAST::DumpAST() const {
     return "CompUnitAST { \n" + func_def->DumpAST() + "}";
 }
@@ -186,7 +187,7 @@ std::string AddExpAST::DumpKoopa() const {
         int leftnum = NAME_NUMBER-1;
         reslt<<m_exp->DumpKoopa();
         int rightnum = NAME_NUMBER-1;
-        reslt<< generate_binary_operation(leftnum,rightnum,oper);
+        reslt << generate_binary_operation(leftnum,rightnum,oper);
 
         return reslt.str();
     }

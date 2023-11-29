@@ -88,7 +88,7 @@ void parse_string(const char *str) {
 //                cerr << value->kind.tag << endl;
 
                 //表达式类型：binary
-                if (value->kind.tag == KOOPA_RVT_BINARY) {
+                if (value->kind.tag == KOOPA_RVT_BINARY) { // 如果是二元表达式，调用 Visit 函数处理这个表达式
 //                    cerr << "lh kind:" << value->kind.data.binary.lhs->kind.tag << "\trh kind:"
 //                         << value->kind.data.binary.rhs->kind.tag << endl;
 //                    cerr << "lh:" << value->kind.data.binary.lhs->kind.data.integer.value << "\top:"

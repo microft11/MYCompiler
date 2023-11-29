@@ -32,7 +32,8 @@ int main(int argc, const char *argv[])
 
     // 调用 parser 函数, parser 函数会进一步调用 lexer 解析输入文件的
     std::unique_ptr<BaseAST> ast;
-    auto ret = yyparse(ast);
+    // 这个函数利用在sysy.y里的定义的语法规则，生成一个符合规则的完全ast 
+    auto ret = yyparse(ast);  // 并且是符合我输入代码语句的AST
     assert(!ret);
 
     if(strcmp(mode,"-koopa")==0)
@@ -45,7 +46,7 @@ int main(int argc, const char *argv[])
 
         freopen(output,"w",stdout);
 
-        parse_string(ast->DumpKoopa().c_str());
+        parse_string(ast ->DumpKoopa().c_str());
 
         return 0;
     }
