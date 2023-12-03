@@ -48,6 +48,7 @@
         "sstream": "cpp",
         "xlocmon": "cpp",
         "xloctime": "cpp",
-        "xtree": "cpp"
+        "xtree": "cpp",
+        "vector": "cpp"
     }
 }
