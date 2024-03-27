@@ -85,10 +85,8 @@ void parse_string(const char *str) {
             koopa_raw_basic_block_t bb = (koopa_raw_basic_block_t) func->bbs.buffer[j];
             for (size_t k = 0; k < bb->insts.len; ++k) {
                 koopa_raw_value_t value = (koopa_raw_value_t) bb->insts.buffer[k];
-//                cerr << value->kind.tag << endl;
-
-                //表达式类型：binary
-                if (value->kind.tag == KOOPA_RVT_BINARY) { // 如果是二元表达式，调用 Visit 函数处理这个表达式
+                if (value->kind.tag == KOOPA_RVT_BINARY) 
+                { // 如果是二元表达式，调用 Visit 函数处理这个表达式
 //                    cerr << "lh kind:" << value->kind.data.binary.lhs->kind.tag << "\trh kind:"
 //                         << value->kind.data.binary.rhs->kind.tag << endl;
 //                    cerr << "lh:" << value->kind.data.binary.lhs->kind.data.integer.value << "\top:"
@@ -100,7 +98,7 @@ void parse_string(const char *str) {
 
                     cout << "\t" << left << setw(6) << "mv" << "a0," << pri_reg_name((REG_NUMBER + MAXREG - 1) % MAXREG)
                          << endl;
-                    cout<<"\tret"<<endl;
+                    cout << "\tret" << endl;
 
                 }
                 // 示例程序中, 你得到的 value 一定是一条 return 指令
@@ -133,6 +131,7 @@ void parse_string(const char *str) {
 //order:指令名,ordernum：指令需要的寄存器个数，reg123:用到的寄存器
 void pri_riscv_bin_order(const char *order, int ordernum, int reg1, int reg2 = -2, int reg3 = -2) {
     assert(ordernum < 4);
+    // setw(6) 将下一个字段的宽度设置为 6 个字符，left左对齐
     cout << "\t" << left << setw(6) << order << pri_reg_name(reg1);
 
     if (ordernum >= 2) {
@@ -175,6 +174,7 @@ void Visit(const koopa_raw_binary_t &oper) {
         //如果是表达式，取binary_t的地址来找出用的寄存器
         lhsreg = value_reg_map[(ull) (&oper.lhs->kind.data.binary)];
     }
+    
     if (oper.rhs->kind.tag == KOOPA_RVT_INTEGER) {
         if (oper.rhs->kind.data.integer.value == 0) {
             value_reg_map[(ull) oper.rhs] = -1;

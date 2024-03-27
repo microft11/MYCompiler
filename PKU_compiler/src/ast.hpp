@@ -280,6 +280,8 @@ public:
         }
     }
 
+    std::string DumpAST() const override;
+
     std::string DumpKoopa() const override;
 };
 
@@ -318,6 +320,9 @@ public:
                 return r_exp->Calc()>=a_exp->Calc();
         }
     }
+
+    std::string DumpAST() const override;
+
     std::string DumpKoopa() const override;
 };
 
@@ -351,6 +356,9 @@ public:
                 return e_exp->Calc()!=r_exp->Calc();
         }
     }
+
+    std::string DumpAST() const override;
+
     std::string DumpKoopa() const override;
 };
 
@@ -386,8 +394,10 @@ public:
                 assert(0);
         }
     }
-    std::string DumpKoopa() const override;
 
+    std::string DumpAST() const override;
+    
+    std::string DumpKoopa() const override;
 
 };
 
@@ -416,6 +426,9 @@ public:
                 assert(0);
         }
     }
+    
+    std::string DumpAST() const override;
+
     std::string DumpKoopa() const override;
 };
 

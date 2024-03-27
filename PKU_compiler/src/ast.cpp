@@ -7,7 +7,7 @@ using namespace std;
 std::string generate_binary_operation(int leftnum,int rightnum,string oper){
     ostringstream tmp;
     tmp<< "\t%"<<NAME_NUMBER<<" = "<<oper<<" %"<<leftnum<<", %"<<rightnum<<endl;
-    NAME_NUMBER++;
+    NAME_NUMBER ++;
     return tmp.str();
 }
 std::string CompUnitAST::DumpAST() const {
@@ -55,6 +55,8 @@ std::string NumberAST::DumpAST() const {
     return "NumberAST { int \n" + std::to_string(val) + " }";
 }
 
+// Number ::= INT_CONST;
+// 把一元运算符改成二元的形式
 std::string NumberAST::DumpKoopa() const {
     //cout<<"Number:"<<NAME_NUMBER<<endl;
     return "\t%"+to_string(NAME_NUMBER++) +"= add 0, "+to_string(val)+"\n";
@@ -93,6 +95,9 @@ std::string UnaryExpAST::DumpAST() const {
     return "UnaryExpAST{  \n"+oper+"("+u_exp->DumpAST()+")}";
 }
 
+// UnaryExp    ::= PrimaryExp | UnaryOp UnaryExp;
+// 但是并没有写成两个构建函数
+// 因为可以用递归的方法把所有情况都枚举到
 std::string UnaryExpAST::DumpKoopa() const {
     std::string rslt = u_exp->DumpKoopa();
     switch (type) {
@@ -112,13 +117,14 @@ std::string UnaryExpAST::DumpKoopa() const {
     }
 }
 
+// MulExp ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
 std::string MulExpAST::DumpAST() const {
 
     if(type == MulType::NotMul){
         return "MulExpAST{  \n"+u_exp->DumpAST()+"}";
     }
     else{
-        string oper;
+        std::string oper;
         switch (type) {
             case MulType::Mul:
                 oper="*";
@@ -169,6 +175,25 @@ std::string MulExpAST::DumpKoopa() const {
 
 }
 
+// AddExp  ::= MulExp | AddExp ("+" | "-") MulExp;
+std::string AddExpAST::DumpAST() const {
+    if (type == AddType::NotAdd) {
+        return "AddExpAST{  \n"+m_exp->DumpAST()+"}";
+    } 
+    else {
+        std::string oper;
+        switch(type) {
+            case AddType::Add:
+                oper = "+";
+                break;
+            case AddType::Sub:
+                oper = "-";
+                break;
+        }
+        return  "AddExpAST{  "+a_exp->DumpAST()+"\n"+oper+"\n"+m_exp->DumpAST()+"}";
+    }
+}
+
 std::string AddExpAST::DumpKoopa() const {
     ostringstream reslt;
     if(type == AddType::NotAdd){
@@ -189,6 +214,33 @@ std::string AddExpAST::DumpKoopa() const {
         reslt<< generate_binary_operation(leftnum,rightnum,oper);
 
         return reslt.str();
+    }
+}
+
+// RelExp ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
+std::string RelExpAST::DumpAST() const {
+    string oper;
+    if (type == RelType::NoRel) {
+        return "RelExpAST{  \n"+a_exp->DumpAST()+"}";
+    }
+    else {
+        switch (type) {
+        case RelType::Less:
+            oper = "<";
+            break;
+        case RelType::Bigger:
+            oper = ">";
+            break;
+        case RelType::LessEq:
+            oper = "<=";
+            break;
+        case RelType::BiggerEq:
+            oper = ">=";
+            break;
+        default:
+            break;
+        }
+        return "RelExpAST{  "+r_exp->DumpAST()+"\n"+oper+"\n"+a_exp->DumpAST()+"}";
     }
 }
 
@@ -223,6 +275,27 @@ std::string RelExpAST::DumpKoopa() const {
     }
 }
 
+// EqExp  ::= RelExp | EqExp ("==" | "!=") RelExp;
+std::string EqExpAST::DumpAST() const {
+    std::string oper;
+    if (type == EqType::NoEq) {
+        return "EqExpAST{  \n"+r_exp->DumpAST()+"}";
+    }
+    else {
+        switch (type) {
+        case EqType::Equal:
+            oper = "==";
+            break;
+        case EqType::NotEqual:
+            oper = "!=";
+            break;
+        default:
+            break;
+        }
+        return "EqExpAST{  "+ e_exp->DumpAST()+"\n"+oper+"\n"+ r_exp->DumpAST()+"}";
+    }
+}
+
 std::string EqExpAST::DumpKoopa() const {
     ostringstream reslt;
     string oper;
@@ -247,6 +320,15 @@ std::string EqExpAST::DumpKoopa() const {
         int rightnum =NAME_NUMBER-1;
         reslt<< generate_binary_operation(leftnum,rightnum,oper);
         return reslt.str();
+    }
+}
+
+std::string LAndExpAST::DumpAST() const {
+    if (type == AndOrType::NoLogic) {
+        return "LAndExpAST{  \n"+e_exp->DumpAST()+"}";
+    }
+    else {
+        return "LAndExpAST{  "+ l_exp->DumpAST()+"\n" + "&&" + "\n"+ e_exp->DumpAST()+"}";
     }
 }
 
@@ -276,6 +358,15 @@ std::string LAndExpAST::DumpKoopa() const {
         NAME_NUMBER++;
 
         return reslt.str();
+    }
+}
+
+std::string LOrExpAST::DumpAST() const {
+    if (type == AndOrType::NoLogic) {
+        return "LAndExpAST{  \n"+And_exp->DumpAST()+"}";
+    }
+    else {
+        return "LAndExpAST{  "+ Or_exp->DumpAST()+"\n" + "||" + "\n"+ And_exp->DumpAST()+"}";
     }
 }
 
