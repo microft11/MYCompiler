@@ -4,7 +4,8 @@
 using namespace std;
 
 //格式化生成运算式
-std::string generate_binary_operation(int leftnum,int rightnum,string oper){
+std::string generate_binary_operation(int leftnum,int rightnum,string oper)
+{
     ostringstream tmp;
     tmp<< "\t%"<<NAME_NUMBER<<" = "<<oper<<" %"<<leftnum<<", %"<<rightnum<<endl;
     NAME_NUMBER ++;
@@ -38,16 +39,61 @@ std::string BlockAST::DumpAST() const {
     return "BlockAST { \n" + stmt->DumpAST() + " }";
 }
 
-std::string BlockAST::DumpKoopa() const {
-    return "%entry:\n" + stmt->DumpKoopa();
+std::string BlockAST::DumpKoopa() const 
+{
+    CONSTVAL_MAP.push_back(unordered_map<string, int>());
+    string rslt =  "%entry:\n" + stmt->DumpKoopa();
+    CONSTVAL_MAP.pop_back();
+    return rslt;
 }
 
-std::string StmtAST::DumpAST() const {
-    return "StmtAST { return, \n" + num->DumpAST() + " }";
+std::string BlockItemAST::DumpKoopa() const
+{
+    ostringstream oss;
+    oss << stmt->DumpKoopa();
+    cerr << oss.str() << std::endl;
+    if (next != nullptr)
+        oss << next->DumpKoopa();
+    return oss.str();
+}
+
+std::string StmtAST::DumpAST() const 
+{
+    if (Is_LVal == 0)
+        return "StmtAST { return, \n" + num->DumpAST() + " }";
+    else {
+        cerr << "Not implied val" << std::endl;
+        assert(0);
+    }
 }
 
 std::string StmtAST::DumpKoopa() const {
-    return num->DumpKoopa()+"\tret %"+ to_string(NAME_NUMBER-1);
+    if (Is_LVal == 0)
+        return num->DumpKoopa()+"\tret %"+ to_string(NAME_NUMBER-1);
+    else {
+        cerr << "Not implied val in this" << std::endl;
+        assert(0);
+    }
+}
+
+// Decl ::= ConstDecl | VarDecl;
+std::string DeclAST::DumpKoopa() const {
+    if (Is_Const)
+        return decl->DumpKoopa();
+    else {
+        cerr << "下一次就会实现了（可能" << std::endl;
+        assert(0);
+    }
+}
+
+// ConstDef  ::= IDENT "=" ConstInitVal;
+// 在ConstDefAST存下了所有常量式
+std::string ConstDefAST::DumpKoopa() const {
+    unordered_map<std::string, int> & lastmap = CONSTVAL_MAP.back();
+    lastmap[name] = exp->Calc();
+    if (next != nullptr)
+        next->DumpKoopa();
+    return "";
 }
 
 std::string NumberAST::DumpAST() const {
@@ -397,4 +443,10 @@ std::string LOrExpAST::DumpKoopa() const {
         NAME_NUMBER++;
         return reslt.str();
     }
+}
+
+std::string LValAST::DumpKoopa() const {
+    ostringstream oss;
+    oss << "\t%" << NAME_NUMBER ++ << "= add 0, " << Calc() << endl;
+    return oss.str();
 }
