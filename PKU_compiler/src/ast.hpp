@@ -86,13 +86,16 @@ class BlockAST : public BaseAST {
 public:
     std::unique_ptr <BaseAST> stmt;
     //插入符号表
+    // 这里存疑，我认为在blockitem中更新符号表更合理
+    // 不应该在生成实例时更新符号表，应该在遍历ast时更新符号表
     BlockAST(std::unique_ptr <BaseAST> &_stmt) {
         stmt = std::move(_stmt);
-        CONSTVAL_MAP.push_back(unordered_map<string,int>());
+    // VAL_MAP.push_back(unordered_map<string, symboltype>());
     }
-    ~BlockAST(){
-        CONSTVAL_MAP.pop_back();
-    }
+
+    // ~BlockAST(){
+    //     VAL_MAP.pop_back();
+    // }
 
     std::string DumpAST() const override;
 
@@ -130,7 +133,7 @@ public:
 
     bool Is_LVal;
     std::unique_ptr <BaseAST> num;
-    std::unique_ptr<BaseAST> lvalname;
+    std::unique_ptr<BaseAST> name;
 
     StmtAST(std::unique_ptr <BaseAST> &_ret_num) {
         num = std::move(_ret_num);
@@ -139,7 +142,7 @@ public:
 
     StmtAST(point<BaseAST>& _num,point<BaseAST>& _lvalname){
         num = std::move(_num);
-        lvalname = std::move(_lvalname);
+        name = std::move(_lvalname);
         Is_LVal= true;
     }
     std::string DumpAST() const override;
@@ -447,6 +450,7 @@ public:
 
 class DeclAST :public BaseAST{
 public:
+    // 1是const 0是val
     bool Is_Const;
     point<BaseAST> decl;
     DeclAST(point<BaseAST>& _decl, bool is_const){
@@ -487,13 +491,49 @@ public:
 class LValAST :public BaseAST{
 public:
     string name;
-    LValAST(string _name):name(_name) {
-        ;
+    bool Is_Const;
+    LValAST(string _name) {
+        name = _name;
     }
 
     std::string DumpKoopa() const override;
 
     int Calc() const override{
-        return GetLvalValue(CONSTVAL_MAP,name);
+        symboltype result = GetLvalValue(VAL_MAP,name);
+        assert(result.type == ValType::Const);
+        return result.num;
     }
+};
+
+class VarDefAST : public BaseAST{
+public:
+    string name;
+    point<BaseAST> value;
+    point<BaseAST> next;
+
+    VarDefAST(string _name, point<BaseAST>& _value) {
+        name = _name;
+        value = std::move(_value);
+    }
+
+    VarDefAST(string _name) {
+        name = _name;
+    }
+
+    void AddItem(point<BaseAST>& _next)
+    {
+        next = std::move(_next);
+    }
+
+    string DumpKoopa() const override;
+};
+
+class LEVal : public BaseAST {
+public:
+    string name;
+    LEVal(string _name)
+    {
+        name = _name;
+    }
+    string DumpKoopa() const override;
 };

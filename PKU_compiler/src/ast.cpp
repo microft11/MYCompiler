@@ -41,9 +41,9 @@ std::string BlockAST::DumpAST() const {
 
 std::string BlockAST::DumpKoopa() const 
 {
-    CONSTVAL_MAP.push_back(unordered_map<string, int>());
+    VAL_MAP.push_back(unordered_map<string, symboltype>());
     string rslt =  "%entry:\n" + stmt->DumpKoopa();
-    CONSTVAL_MAP.pop_back();
+    VAL_MAP.pop_back();
     return rslt;
 }
 
@@ -62,8 +62,10 @@ std::string StmtAST::DumpAST() const
     if (Is_LVal == 0)
         return "StmtAST { return, \n" + num->DumpAST() + " }";
     else {
-        cerr << "Not implied val" << std::endl;
-        assert(0);
+        ostringstream oss;
+        oss << num->DumpKoopa();
+        oss << name->DumpKoopa();
+        return oss.str();
     }
 }
 
@@ -71,26 +73,29 @@ std::string StmtAST::DumpKoopa() const {
     if (Is_LVal == 0)
         return num->DumpKoopa()+"\tret %"+ to_string(NAME_NUMBER-1);
     else {
-        cerr << "Not implied val in this" << std::endl;
-        assert(0);
+       
+        ostringstream oss;
+        // 求值
+        oss << num->DumpKoopa();
+
+        // 存储
+        oss << name->DumpKoopa();
+
+        return oss.str();
     }
 }
 
 // Decl ::= ConstDecl | VarDecl;
 std::string DeclAST::DumpKoopa() const {
-    if (Is_Const)
-        return decl->DumpKoopa();
-    else {
-        cerr << "下一次就会实现了（可能" << std::endl;
-        assert(0);
-    }
+    return decl->DumpKoopa();
 }
 
 // ConstDef  ::= IDENT "=" ConstInitVal;
 // 在ConstDefAST存下了所有常量式
 std::string ConstDefAST::DumpKoopa() const {
-    unordered_map<std::string, int> & lastmap = CONSTVAL_MAP.back();
-    lastmap[name] = exp->Calc();
+    unordered_map<std::string, symboltype> & lastmap = VAL_MAP.back();
+    symboltype record = {exp->Calc(), ValType::Const};
+    lastmap[name] = record;
     if (next != nullptr)
         next->DumpKoopa();
     return "";
@@ -447,6 +452,47 @@ std::string LOrExpAST::DumpKoopa() const {
 
 std::string LValAST::DumpKoopa() const {
     ostringstream oss;
-    oss << "\t%" << NAME_NUMBER ++ << "= add 0, " << Calc() << endl;
+    if (HasName(VAL_MAP, name) == false)
+    {
+        cerr << "符号表中不存在" << name << endl;
+        assert(0);
+    }
+    symboltype rslt = GetLvalValue(VAL_MAP, name);
+    if (rslt.type == ValType::Const)
+        oss << "\t%" << NAME_NUMBER ++ << "= add 0, " << Calc() << endl;
+    else   
+        oss << "\t%" << NAME_NUMBER++ << "= load @" << name << endl;
+    return oss.str();
+}
+
+std::string VarDefAST::DumpKoopa() const {
+    ostringstream oss;
+    oss << "\t@" << name << " = alloc i32" << endl;
+    unordered_map<string, symboltype>& lastmap = VAL_MAP.back();
+    if (value != nullptr)
+    {
+        // 输出表达式的koopa
+        oss << value->DumpKoopa();
+
+        oss << "\tstore %" << NAME_NUMBER - 1 << ", @" << name << endl;
+        symboltype valstruct = {-999999, ValType::Val};
+        lastmap[name] = valstruct;
+    }
+    else {
+        // 没有自定义值，用默认值
+        symboltype valstruct = {-999999, ValType::Val};
+        lastmap[name] = valstruct;
+    }
+    if (next != nullptr)
+        oss << next->DumpKoopa();
+    return oss.str();
+}
+
+// Stmt ::= LVal "=" Exp ";"
+// 这里这个lval需要记录下来，用store。
+string LEVal::DumpKoopa() const {
+    assert(HasName(VAL_MAP, name));
+    ostringstream oss;
+    oss << "\tstore %" << NAME_NUMBER-1 << ", @" << name << endl;
     return oss.str();
 }
