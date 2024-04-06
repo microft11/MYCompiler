@@ -60,16 +60,18 @@ void parse_string(const char *str) {
 
         // 为函数申请特别大的栈空间存
         // 每个语句都可以分到一个4字节空间（无论他用不用)
+        // 函数prologue，在函数入口更新栈指针的指令
         int length = 0;
         for (size_t tmp = 0; tmp < func->bbs.len; tmp++) {
             koopa_raw_basic_block_t bb = (koopa_raw_basic_block_t) func->bbs.buffer[tmp];
             length += bb->insts.len;
         }
         cout << "\taddi sp, sp, -" << length * 4 << endl;
+
         for (size_t j = 0; j < func->bbs.len; ++j) {
             assert(func->bbs.kind == KOOPA_RSIK_BASIC_BLOCK);
 
-            // 符号表，当前变量存在栈上
+            // 符号表，当前变量存在栈上，每一个block一个符号表
             unordered_map<koopa_raw_value_t , int> sympol_map;
             // 迭代器，指示当前栈没有数的最小偏移量
             int stackIt = 0;
