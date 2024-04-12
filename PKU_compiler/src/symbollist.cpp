@@ -13,16 +13,8 @@ bool HasName(vector<unordered_map<string, symboltype>>& sel_map,const string& na
     return false;
 }
 
-/// 获取符号表中的值
-symboltype GetLvalValue(vector<unordered_map<string, symboltype>>& sel_map,const string& name)
+void warnerror(vector<unordered_map<string, symboltype>>& sel_map,const string& name)
 {
-    for (auto it = sel_map.rbegin(); it != sel_map.rend(); ++it){
-        const std::unordered_map<std::string, symboltype>& map = *it;
-        auto found = map.find(name);
-        if (found != map.end()) {
-            return found->second;
-        }
-    }
     cerr << "符号表中无此值" << std::endl;
     cerr << "当前符号表为" << std::endl;
     for (auto it = sel_map.rbegin(); it != sel_map.rend(); it ++)
@@ -35,6 +27,20 @@ symboltype GetLvalValue(vector<unordered_map<string, symboltype>>& sel_map,const
              << ", type " << static_cast<int>(mpit->second.type) << endl;
         } 
     }
+    assert(0);
+}
+
+/// 获取符号表中的值
+symboltype GetLvalValue(vector<unordered_map<string, symboltype>>& sel_map,const string& name)
+{
+    for (auto it = sel_map.rbegin(); it != sel_map.rend(); ++it){
+        const std::unordered_map<std::string, symboltype>& map = *it;
+        auto found = map.find(name);
+        if (found != map.end()) {
+            return found->second;
+        }
+    }
+    warnerror(sel_map, name);
     assert(0);
 }
 

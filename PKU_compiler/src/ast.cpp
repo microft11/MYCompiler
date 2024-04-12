@@ -3,6 +3,27 @@
 #include "sstream"
 using namespace std;
 
+
+int retValDepth(string name)
+{
+    int depth = VAL_MAP.size();
+    for (auto it = VAL_MAP.rbegin(); it != VAL_MAP.rend(); it ++)
+    {
+        unordered_map<string, symboltype> & tmpmap = *it;
+        if (mpmap.find(name) != tmpmap.end()) {
+            break;
+        } else {
+            depth --;
+        }
+    }
+
+    if (depth <= 0)
+    {
+        warnerror(VAL_MAP, name);
+    }
+    return depth;
+}
+
 //格式化生成运算式
 std::string generate_binary_operation(int leftnum,int rightnum,string oper)
 {
@@ -24,7 +45,17 @@ std::string FuncDefAST::DumpAST() const {
 }
 
 std::string FuncDefAST::DumpKoopa() const {
-    return "fun @" + ident + "():" + func_type->DumpKoopa() + "{\n" + block->DumpKoopa() + "\n}";
+    // return "fun @" + ident + "():" + func_type->DumpKoopa() + "{\n" + block->DumpKoopa() + "\n}";
+    ostringstream oss;
+    oss << "fun @" << ident << "():" << func_type->DumpKoopa() << "{\n" << "%entry:\n" << block->DumpKoopa();
+
+    if (NAME_NUMBER > 0)
+    {
+        oss << "\tret %" << NAME_NUMBER - 1;
+    }
+    oss << "\n}";
+
+    return oss.str();
 }
 
 std::string FuncTypeAST::DumpAST() const {
@@ -42,7 +73,11 @@ std::string BlockAST::DumpAST() const {
 std::string BlockAST::DumpKoopa() const 
 {
     VAL_MAP.push_back(unordered_map<string, symboltype>());
-    string rslt =  "%entry:\n" + stmt->DumpKoopa();
+    string rslt = "";
+    if (stmt != nullptr)
+    {
+        rslt += stmt->DumpKoopa();
+    }
     VAL_MAP.pop_back();
     return rslt;
 }
@@ -50,10 +85,14 @@ std::string BlockAST::DumpKoopa() const
 std::string BlockItemAST::DumpKoopa() const
 {
     ostringstream oss;
-    oss << stmt->DumpKoopa();
+    if (stmt != nullptr) 
+    {
+        oss << stmt->DumpKoopa();
+    }
     cerr << oss.str() << std::endl;
     if (next != nullptr)
         oss << next->DumpKoopa();
+
     return oss.str();
 }
 
@@ -69,19 +108,30 @@ std::string StmtAST::DumpAST() const
     }
 }
 
-std::string StmtAST::DumpKoopa() const {
-    if (Is_LVal == 0)
-        return num->DumpKoopa()+"\tret %"+ to_string(NAME_NUMBER-1);
-    else {
-       
+std::string StmtAST::DumpKoopa() const 
+{  
         ostringstream oss;
-        // 求值
-        oss << num->DumpKoopa();
+        if (type == StmtType::LValEqStmt || type == StmtType::ReturnStmt)
+        {
+            if (!Is_LVal) 
+                return num->DumpKoopa();
+            else
+            {
+                // 求值
+                oss << num->DumpKoopa();
 
-        // 存储
-        oss << name->DumpKoopa();
+                // 存储
+                oss << name->DumpKoopa();
 
-        return oss.str();
+                return oss.str();
+            }
+        }
+        else if (type == StmtType::BlockStmt) {
+            oss << num->DumpKoopa();
+            return oss.str();
+        }
+
+        return "";
     }
 }
 
@@ -320,7 +370,7 @@ std::string RelExpAST::DumpKoopa() const {
         reslt<<r_exp->DumpKoopa();
         int leftnum = NAME_NUMBER-1;
         reslt<<a_exp->DumpKoopa();
-        int rightnum =NAME_NUMBER-1;
+        int rightnum = NAME_NUMBER-1;
         reslt<< generate_binary_operation(leftnum,rightnum,oper);
         return reslt.str();
     }
@@ -460,21 +510,26 @@ std::string LValAST::DumpKoopa() const {
     symboltype rslt = GetLvalValue(VAL_MAP, name);
     if (rslt.type == ValType::Const)
         oss << "\t%" << NAME_NUMBER ++ << "= add 0, " << Calc() << endl;
-    else   
-        oss << "\t%" << NAME_NUMBER++ << "= load @" << name << endl;
+    else {   
+        int depth = retValDepth(name);
+        oss << "\t%" << NAME_NUMBER++ << "= load @COMPILER_" << name << "_" << depth << endl;
+    }
     return oss.str();
 }
 
 std::string VarDefAST::DumpKoopa() const {
     ostringstream oss;
-    oss << "\t@" << name << " = alloc i32" << endl;
+    int depth = VAL_MAP.size();
+    string tmpname = name + "_" + to_string(depth);
+
+    oss << "\t@COMPILER_" << tmpname << " = alloc i32" << endl;
     unordered_map<string, symboltype>& lastmap = VAL_MAP.back();
     if (value != nullptr)
     {
         // 输出表达式的koopa
         oss << value->DumpKoopa();
 
-        oss << "\tstore %" << NAME_NUMBER - 1 << ", @" << name << endl;
+        oss << "\tstore %" << NAME_NUMBER - 1 << ", @COMPILER_" << tmpname << endl;
         symboltype valstruct = {-999999, ValType::Val};
         lastmap[name] = valstruct;
     }
@@ -491,8 +546,10 @@ std::string VarDefAST::DumpKoopa() const {
 // Stmt ::= LVal "=" Exp ";"
 // 这里这个lval需要记录下来，用store。
 string LEVal::DumpKoopa() const {
-    assert(HasName(VAL_MAP, name));
+    // assert(HasName(VAL_MAP, name));
+
+    int depth = retValDepth(name);
     ostringstream oss;
-    oss << "\tstore %" << NAME_NUMBER-1 << ", @" << name << endl;
+    oss << "\tstore %" << NAME_NUMBER-1 << ", @COMPILER_" << name <<  "_" << depth << endl;
     return oss.str();
 }
