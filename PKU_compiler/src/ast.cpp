@@ -3,6 +3,9 @@
 #include "sstream"
 using namespace std;
 
+/// 用于记录当前寄存器用到几号
+/// %NAME_NUMBER 意思是下一个空着的变量符而不是最后一个已用的变量
+int NAME_NUMBER = 0;
 
 int retValDepth(string name)
 {
@@ -47,13 +50,12 @@ std::string FuncDefAST::DumpAST() const {
 std::string FuncDefAST::DumpKoopa() const {
     // return "fun @" + ident + "():" + func_type->DumpKoopa() + "{\n" + block->DumpKoopa() + "\n}";
     ostringstream oss;
+    // 进入基本块存入0
+    BLOCK_RET_RECORDER.push_back(0);
     oss << "fun @" << ident << "():" << func_type->DumpKoopa() << "{\n" << "%entry:\n" << block->DumpKoopa();
 
-    if (NAME_NUMBER > 0)
-    {
-        oss << "\tret %" << NAME_NUMBER - 1;
-    }
     oss << "\n}";
+    BLOCK_RET_RECORDER.pop_back();
 
     return oss.str();
 }
@@ -113,8 +115,14 @@ std::string StmtAST::DumpKoopa() const
         ostringstream oss;
         if (type == StmtType::LValEqStmt || type == StmtType::ReturnStmt)
         {
-            if (!Is_LVal) 
-                return num->DumpKoopa();
+            if (type == StmtType::ReturnStmt) 
+                if (BLOCK_RET_RECORDER.back() == 0)
+                {
+                    BLOCK_RET_RECORDER.back() = 1;
+                    return num->DumpKoopa() + "\tret %" + to_string(NAME_NUMBER - 1);
+                }
+                else 
+                    return "";
             else
             {
                 // 求值
